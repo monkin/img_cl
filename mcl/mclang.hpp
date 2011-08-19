@@ -1224,7 +1224,6 @@ namespace mclang {
 	MCLANG_T_FN(remquo, 2, float);
 	MCLANG_T_FN(rint, 1, float);
 	MCLANG_T_FN(round, 1, float);
-	MCLANG_T_FN(round, 1, float);
 	MCLANG_T_FN(rsqrt, 1, float);
 	MCLANG_T_FN(sin, 1, float);
 	MCLANG_T_FN(sinh, 1, float);
@@ -1239,7 +1238,33 @@ namespace mclang {
 	MCLANG_T_FN(normalize, 1, float);
 	MCLANG_T_FN(fast_normalize, 1, float);
 #undef MCLANG_T_FN
-	
+
+	inline std::shared_ptr<Expression> length(const std::shared_ptr<Expression> &e) {
+		Type t = e->type();
+		assert(t.is_vector() ? t.vector_of().is_float() && t.vector_size()<=4 : t.is_float());
+		static const char nm[] = "length";
+		std::array<Type, 1> tps = { Type::tp_void };
+		std::array<std::shared_ptr<Expression>, 1> args = { e };
+		return std::shared_ptr<Expression>(new CallFunction<nm, 1>(Type::tp_float, tps, args)); 
+	}
+	inline std::shared_ptr<Expression> distance(const std::shared_ptr<Expression> &e1, const std::shared_ptr<Expression> &e2) {
+		Type t = e1->type();
+		assert(t==e2->type());
+		assert(t.is_vector() ? t.vector_of().is_float() && t.vector_size()<=4: t.is_float());
+		static const char nm[] = "distance";
+		std::array<Type, 2> tps = { Type::tp_void, Type::tp_void };
+		std::array<std::shared_ptr<Expression>, 2> args = { e1, e2 };
+		return std::shared_ptr<Expression>(new CallFunction<nm, 2>(Type::tp_float, tps, args));
+	}
+	inline std::shared_ptr<Expression> dot(const std::shared_ptr<Expression> &e1, const std::shared_ptr<Expression> &e2) {
+		Type t = e1->type();
+		assert(t==e2->type());
+		assert(t.is_vector() ? t.vector_of().is_float() && t.vector_size()<=4: t.is_float());
+		static const char nm[] = "dot";
+		std::array<Type, 2> tps = { Type::tp_void, Type::tp_void };
+		std::array<std::shared_ptr<Expression>, 2> args = { e1, e2 };
+		return std::shared_ptr<Expression>(new CallFunction<nm, 2>(Type::tp_float, tps, args));
+	}
 	
 }
 
