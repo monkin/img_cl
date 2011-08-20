@@ -122,7 +122,7 @@ int main() {
 						mcl::Buffer b2(buff);
 						
 						auto pbuff = m::argv<cl_float>(buff);
-						auto ptree = m::set(m::select(pbuff, m::get_global_id(0)), m::select(pbuff, m::get_global_id(0)) * m::cnst(2));
+						auto ptree = m::set(m::select(pbuff, m::get_global_id(0)), m::sin(m::select(pbuff, m::get_global_id(0)) / m::cnst(100)));
 						
 						std::cout << std::endl << ptree->build() << std::endl;
 						

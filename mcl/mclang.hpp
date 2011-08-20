@@ -1142,7 +1142,7 @@ namespace mclang {
 		return std::shared_ptr<Expression>(new CallFunction<nm, 2>(rtype, types, args));
 	}
 #define MCLANG_T_FN(NM, SZ, TP) \
-	inline std::shared_ptr<Expression> NM(std::initializer_list<std::shared_ptr<Expression>> args) { \
+	inline std::shared_ptr<Expression> NM ## _internal_do(std::array<std::shared_ptr<Expression>, SZ> &args) { \
 		assert(args.size() == SZ);                     \
 		for(auto i=args.begin(); i!=args.end(); i++) { \
 			Type t = (*i)->type();                     \
@@ -1152,91 +1152,108 @@ namespace mclang {
 				return r==Type::tp_void ? e->type() : Type::max(r, e->type()); \
 			}); \
 		std::array<Type, SZ> types; \
-		std::fill(types.begin(), types.end(), Type::tp_void); \
-		std::array<std::shared_ptr<Expression>, SZ> argsa;    \
-		std::copy(args.begin(), args.end(), argsa.begin());   \
-		for(size_t i=0; i<SZ; i++)            \
-			argsa[i] = cast(argsa[i], rtype); \
+		std::fill(types.begin(), types.end(), Type(Type::tp_void));  \
+		for(auto i=args.begin(); i!=args.end(); i++)            \
+			*i = cast(*i, rtype); \
 		static char nm[] = #NM;               \
-		return std::shared_ptr<Expression>(new CallFunction<nm, SZ>(rtype, types, argsa)); \
+		return std::shared_ptr<Expression>(new CallFunction<nm, SZ>(rtype, types, args)); \
 	}
-	MCLANG_T_FN(add_sat, 2, integer);
-	MCLANG_T_FN(hadd, 2, integer);
-	MCLANG_T_FN(rhadd, 2, integer);
-	MCLANG_T_FN(clz, 1, integer);
-	MCLANG_T_FN(mad_hi, 3, integer);
-	MCLANG_T_FN(mad_sat, 3, integer);
-	MCLANG_T_FN(rotate, 2, integer);
-	MCLANG_T_FN(sub_sat, 2, integer);
-	MCLANG_T_FN(mad24, 3, integer);
-	MCLANG_T_FN(mul24, 2, integer);
-	MCLANG_T_FN(clamp, 3, numeric);
-	MCLANG_T_FN(min, 2, numeric);
-	MCLANG_T_FN(max, 2, numeric);
-	MCLANG_T_FN(mix, 3, numeric);
-	MCLANG_T_FN(radians, 1, numeric);
-	MCLANG_T_FN(step, 2, numeric);
-	MCLANG_T_FN(smoothstep, 3, numeric);
-	MCLANG_T_FN(sign, 1, numeric);
-	MCLANG_T_FN(acos, 1, float);
-	MCLANG_T_FN(acosh, 1, float);
-	MCLANG_T_FN(acospi, 1, float);
-	MCLANG_T_FN(asin, 1, float);
-	MCLANG_T_FN(asinh, 1, float);
-	MCLANG_T_FN(asinpi, 1, float);
-	MCLANG_T_FN(atan, 1, float);
-	MCLANG_T_FN(atan2, 2, float);
-	MCLANG_T_FN(atanh, 1, float);
-	MCLANG_T_FN(atanpi, 1, float);
-	MCLANG_T_FN(atan2pi, 2, float);
-	MCLANG_T_FN(cbrt, 1, float);
-	MCLANG_T_FN(ceil, 1, float);
-	MCLANG_T_FN(copysign, 2, float);
-	MCLANG_T_FN(cos, 1, float);
-	MCLANG_T_FN(cosh, 1, float);
-	MCLANG_T_FN(cospi, 1, float);
-	MCLANG_T_FN(erfc, 1, float);
-	MCLANG_T_FN(erf, 1, float);
-	MCLANG_T_FN(exp, 1, float);
-	MCLANG_T_FN(exp2, 1, float);
-	MCLANG_T_FN(exp10, 1, float);
-	MCLANG_T_FN(expm1, 1, float);
-	MCLANG_T_FN(fabs, 1, float);
-	MCLANG_T_FN(fdim, 2, float);
-	MCLANG_T_FN(floor, 1, float);
-	MCLANG_T_FN(fma, 3, float);
-	MCLANG_T_FN(fmax, 2, float);
-	MCLANG_T_FN(fmin, 2, float);
-	MCLANG_T_FN(fmod, 2, float);
-	MCLANG_T_FN(hypot, 2, float);
-	MCLANG_T_FN(lgamma, 1, float);
-	MCLANG_T_FN(log, 1, float);
-	MCLANG_T_FN(log2, 1, float);
-	MCLANG_T_FN(log10, 1, float);
-	MCLANG_T_FN(log1p, 1, float);
-	MCLANG_T_FN(logb, 1, float);
-	MCLANG_T_FN(mad, 3, float);
-	MCLANG_T_FN(maxmag, 2, float);
-	MCLANG_T_FN(minmag, 2, float);
-	MCLANG_T_FN(nextafter, 2, float);
-	MCLANG_T_FN(pow, 2, float);
-	MCLANG_T_FN(remainder, 2, float);
-	MCLANG_T_FN(remquo, 2, float);
-	MCLANG_T_FN(rint, 1, float);
-	MCLANG_T_FN(round, 1, float);
-	MCLANG_T_FN(rsqrt, 1, float);
-	MCLANG_T_FN(sin, 1, float);
-	MCLANG_T_FN(sinh, 1, float);
-	MCLANG_T_FN(sinpi, 1, float);
-	MCLANG_T_FN(sqrt, 1, float);
-	MCLANG_T_FN(tan, 1, float);
-	MCLANG_T_FN(tanh, 1, float);
-	MCLANG_T_FN(tanpi, 1, float);
-	MCLANG_T_FN(tgamma, 1, float);
-	MCLANG_T_FN(trunc, 1, float);
-	MCLANG_T_FN(cross, 2, float);
-	MCLANG_T_FN(normalize, 1, float);
-	MCLANG_T_FN(fast_normalize, 1, float);
+#define MCLANG_T_FN_1(NM, TP) MCLANG_T_FN(NM, 1, TP); \
+	inline std::shared_ptr<Expression> NM(const std::shared_ptr<Expression> &e) { \
+		std::array<std::shared_ptr<Expression>, 1> args = { e }; \
+		return NM ## _internal_do(args); \
+	}
+#define MCLANG_T_FN_2(NM, TP) MCLANG_T_FN(NM, 2, TP); \
+	inline std::shared_ptr<Expression> NM(const std::shared_ptr<Expression> &e1, const std::shared_ptr<Expression> &e2) { \
+		std::array<std::shared_ptr<Expression>, 2> args = { e1, e2 }; \
+		return NM ## _internal_do(args); \
+	}
+#define MCLANG_T_FN_3(NM, TP) MCLANG_T_FN(NM, 3, TP); \
+	inline std::shared_ptr<Expression> NM(const std::shared_ptr<Expression> &e1, const std::shared_ptr<Expression> &e2, const std::shared_ptr<Expression> &e3) { \
+		std::array<std::shared_ptr<Expression>, 3> args = { e1, e2, e3 }; \
+		return NM ## _internal_do(args); \
+	}
+
+	MCLANG_T_FN_2(add_sat, integer);
+	MCLANG_T_FN_2(hadd, integer);
+	MCLANG_T_FN_2(rhadd, integer);
+	MCLANG_T_FN_1(clz, integer);
+	MCLANG_T_FN_3(mad_hi, integer);
+	MCLANG_T_FN_3(mad_sat, integer);
+	MCLANG_T_FN_2(rotate, integer);
+	MCLANG_T_FN_2(sub_sat, integer);
+	MCLANG_T_FN_3(mad24, integer);
+	MCLANG_T_FN_2(mul24, integer);
+	MCLANG_T_FN_3(clamp, numeric);
+	MCLANG_T_FN_2(min, numeric);
+	MCLANG_T_FN_2(max, numeric);
+	MCLANG_T_FN_3(mix, numeric);
+	MCLANG_T_FN_1(radians, numeric);
+	MCLANG_T_FN_2(step, numeric);
+	MCLANG_T_FN_3(smoothstep, numeric);
+	MCLANG_T_FN_1(sign, numeric);
+	MCLANG_T_FN_1(acos, float);
+	MCLANG_T_FN_1(acosh, float);
+	MCLANG_T_FN_1(acospi, float);
+	MCLANG_T_FN_1(asin, float);
+	MCLANG_T_FN_1(asinh, float);
+	MCLANG_T_FN_1(asinpi, float);
+	MCLANG_T_FN_1(atan, float);
+	MCLANG_T_FN_2(atan2, float);
+	MCLANG_T_FN_1(atanh, float);
+	MCLANG_T_FN_1(atanpi, float);
+	MCLANG_T_FN_2(atan2pi, float);
+	MCLANG_T_FN_1(cbrt, float);
+	MCLANG_T_FN_1(ceil, float);
+	MCLANG_T_FN_2(copysign, float);
+	MCLANG_T_FN_1(cos, float);
+	MCLANG_T_FN_1(cosh, float);
+	MCLANG_T_FN_1(cospi, float);
+	MCLANG_T_FN_1(erfc, float);
+	MCLANG_T_FN_1(erf, float);
+	MCLANG_T_FN_1(exp, float);
+	MCLANG_T_FN_1(exp2, float);
+	MCLANG_T_FN_1(exp10, float);
+	MCLANG_T_FN_1(expm1, float);
+	MCLANG_T_FN_1(fabs, float);
+	MCLANG_T_FN_2(fdim, float);
+	MCLANG_T_FN_1(floor, float);
+	MCLANG_T_FN_3(fma, float);
+	MCLANG_T_FN_2(fmax, float);
+	MCLANG_T_FN_2(fmin, float);
+	MCLANG_T_FN_2(fmod, float);
+	MCLANG_T_FN_2(hypot, float);
+	MCLANG_T_FN_1(lgamma, float);
+	MCLANG_T_FN_1(log, float);
+	MCLANG_T_FN_1(log2, float);
+	MCLANG_T_FN_1(log10, float);
+	MCLANG_T_FN_1(log1p, float);
+	MCLANG_T_FN_1(logb, float);
+	MCLANG_T_FN_3(mad, float);
+	MCLANG_T_FN_2(maxmag, float);
+	MCLANG_T_FN_2(minmag, float);
+	MCLANG_T_FN_2(nextafter, float);
+	MCLANG_T_FN_2(pow, float);
+	MCLANG_T_FN_2(remainder, float);
+	MCLANG_T_FN_2(remquo, float);
+	MCLANG_T_FN_1(rint, float);
+	MCLANG_T_FN_1(round, float);
+	MCLANG_T_FN_1(rsqrt, float);
+	MCLANG_T_FN_1(sin, float);
+	MCLANG_T_FN_1(sinh, float);
+	MCLANG_T_FN_1(sinpi, float);
+	MCLANG_T_FN_1(sqrt, float);
+	MCLANG_T_FN_1(tan, float);
+	MCLANG_T_FN_1(tanh, float);
+	MCLANG_T_FN_1(tanpi, float);
+	MCLANG_T_FN_1(tgamma, float);
+	MCLANG_T_FN_1(trunc, float);
+	MCLANG_T_FN_2(cross, float);
+	MCLANG_T_FN_1(normalize, float);
+	MCLANG_T_FN_1(fast_normalize, float);
+#undef MCLANG_T_FN_3
+#undef MCLANG_T_FN_2
+#undef MCLANG_T_FN_1
 #undef MCLANG_T_FN
 
 	inline std::shared_ptr<Expression> length(const std::shared_ptr<Expression> &e) {

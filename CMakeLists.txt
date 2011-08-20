@@ -12,5 +12,5 @@ include_directories(${OPENCL_INCLUDE_DIR})
 
 include(${wxWidgets_USE_FILE})
 set(SRCS main.cpp mcl/mcl.cpp mcl/mcl.hpp mcl/mclang.cpp mcl/mclang.hpp)
-add_executable(test ${SRCS})
-target_link_libraries(test ${wxWidgets_LIBRARIES} ${OPENCL_LIBRARIES})
+add_executable(img_cl ${SRCS})
+target_link_libraries(img_cl ${wxWidgets_LIBRARIES} ${OPENCL_LIBRARIES})
