@@ -306,6 +306,7 @@ namespace mclang {
 			sout << ";\n};\n";
 			return sout.str();
 		}
+		virtual ~Expression();
 	};
 	
 	inline void format_const(std::ostream &s, cl_char c) { s << std::hex << std::showbase << c; }

@@ -13,7 +13,7 @@
 #include <iomanip>
 
 namespace mcl {
-	class Error: public std::exception {
+	class Error : public std::exception {
 	private:
 		cl_int m_code;
 	public:
