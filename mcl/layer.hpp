@@ -5,6 +5,7 @@
 
 #include "mcl.hpp"
 #include "mclang.hpp"
+#include "CL/cl.h"
 #include <iostream>
 #include <exception>
 #include <map>
@@ -21,43 +22,112 @@ namespace layer {
 			return m_factory_name;
 		}
 		const char *what() const throw();
-	}; 
+		~ErrorFactoryNotFound() throw();
+	};
 	
-	namespace type {
-		Bool
-		Float
-		Color
-	}
+	class Type {
+	public:
+		typedef long type;
+		static const type ltp_float = 1;
+		static const type ltp_color = 2;
+		static const type ltp_vector2d = 4;
+		static const type ltp_any = ltp_float | ltp_color | ltp_vector2d;
+		static inline bool compatible(type t1, type t2) {
+			return t1 & t2;
+		}
+	};
 	
 	class Layer;
+	class Context;
 	
 	class LayerFactory {
 	public:
-		virtual std::shared_ptr<Layer> create(mcl::Context &) = 0;
+		virtual std::shared_ptr<Layer> create(Context &) = 0;
 	};
 	
-	class Layer {
+	class Context {
 	private:
-		static std::map<std::string, LayerFactory *> m_factory; 
+		mcl::Context m_context;
+		mcl::Queue m_queue;
+		static std::map<std::string, LayerFactory *> m_factory;
 	public:
-		Layer(mcl::Context &c) {}
-		virtual const std::vector<std::string> &args() = 0;
-		virtual const std::shared_ptr<mclang::Expression> get_arg(const std::string &) = 0;
-		virtual void set_arg(const std::string &, const std::shared_ptr<mclang::Expression> &) = 0;
-		virtual void set_position(const std::shared_ptr<mclang::Expression> &, size_t) = 0;
-		virtual void set_position(const mcl::Buffer &) = 0;
-		virtual void set_position(const std::vector<cl_float2> &) = 0;
-		virtual std::shared_ptr<mclang::Expression> compute(mcl::Queue &, size_t work_size) = 0;
-		static inline std::shared_ptr<Layer> create(const std::string &nm, mcl::Context &c) {
+		Context(mcl::Context &c, mcl::Device &d) : m_context(c), m_queue(c, d) {}
+		mcl::Queue queue() { return m_queue; }
+		mcl::Context mcl_context() { return m_context; }
+		mcl::Device device() { return m_queue.device(); }
+		std::shared_ptr<Layer> create(const std::string &nm) {
 			auto fit = m_factory.find(nm);
 			if(fit==m_factory.end())
 				throw ErrorFactoryNotFound(nm);
 			else
-				return fit->second->create(c);
+				return fit->second->create(*this);
 		}
-		static inline void register_factory(const std::string &nm, const LayerFactory &f) {
+		static inline void register_factory(const std::string &nm, LayerFactory &f) {
 			m_factory.insert(std::pair<std::string, LayerFactory *>(nm, &f));
 		}
+	};
+	
+	class Argument {
+	private:
+		Type::type m_type;
+		std::shared_ptr<Layer> m_value;
+		Layer *m_owner;
+		std::string m_name;
+	public:
+		Argument(Type::type tp, std::string nm) : m_type(tp), m_name(nm) {}
+		const std::string &name() const {
+			return m_name;	
+		}
+		Type::type type() const {
+			return m_type;
+		}
+		const std::shared_ptr<Layer> value() const {
+			return m_value;	
+		}
+		void set_value(std::shared_ptr<Layer> v);
+		const Layer &owner() const {
+			return *m_owner;
+		}
+		Layer &owner() {
+			return *m_owner;
+		}
+		void set_owner(Layer *w) {
+			m_owner = w;	
+		}
+	};
+	
+	class Layer {
+	private:
+		std::vector<Argument> m_arguments;
+		std::map<std::string, std::vector<Argument>::iterator> p_arguments;
+		Context m_context;
+		mclang::ExpressionRef m_position;
+		long long m_version;
+	protected:
+		mclang::ExpressionRef position() const {
+			return m_position;
+		}
+	public:
+		Layer(Context &c, const std::vector<Argument> &args) : m_arguments(args), m_context(c), m_version(1) {
+			for(auto i = m_arguments.begin(); i!=m_arguments.end(); i++) {
+				i->set_owner(this);
+				p_arguments.insert(std::pair<std::string, std::vector<Argument>::iterator>(i->name(), i));
+			}
+		}
+		Context &context() { return m_context; }
+		virtual std::string class_name() const;
+		const std::vector<Argument> &arguments() const { return m_arguments; }
+		std::vector<Argument> &arguments() { return m_arguments; }
+		const Argument &argument(const std::string &name) const {
+			return *(p_arguments.find(name)->second);
+		}
+		Argument &argument(const std::string &name) { return *p_arguments[name]; }
+		void set_position(const mclang::ExpressionRef &e) { m_position = e;	}
+		virtual void reset_cache() = 0;
+		virtual mclang::ExpressionRef compute(size_t) = 0;
+		long long version() const { return m_version; }
+		void inc_version() { m_version++; }
+		void set_version(long long v) { m_version = v; }
 	};
 	
 	template<typename T>
@@ -65,26 +135,26 @@ namespace layer {
 	protected:
 		class FactoryInstance : public LayerFactory {
 		public:
-			virtual std::shared_ptr<Layer> create(mcl::Context &);
-		}
+			virtual std::shared_ptr<Layer> create(Context &);
+		};
 		static FactoryInstance m_factory;
 	public:
 		LayerFactoryRegistrar(const std::string &name) {
-			Layer::register_factory(name, m_factory);
+			Context::register_factory(name, m_factory);
 		}
 	};
 	
 	template<typename T>
-	LayerFactoryRegistrar<T>::FactoryInstance LayerFactoryRegistrar<T>::m_factory;
+	typename LayerFactoryRegistrar<T>::FactoryInstance LayerFactoryRegistrar<T>::m_factory;
 	
 	template<typename T>
-	std::shared_ptr<Layer> LayerFactoryRegistrar<T>::FactoryInstance::create(mcl::Context &c) {
+	std::shared_ptr<Layer> LayerFactoryRegistrar<T>::FactoryInstance::create(Context &c) {
 		return std::shared_ptr<Layer>(new T(c));
 	}
 	
 	
-	class HostLayer : public Layer {}
-	class DeviceLayer : public Layer {}
+	class HostLayer : public Layer {};
+	class DeviceLayer : public Layer {};
 }
 
 

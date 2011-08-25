@@ -16,11 +16,6 @@
 #include <set>
 #include <assert.h>
 
-/*
-	cnst
-	arg
-
-*/
 
 namespace mclang {
 	class Type {
@@ -230,6 +225,7 @@ namespace mclang {
 	
 	class Expression;
 	
+	typedef std::shared_ptr<Expression> ExpressionRef;
 	typedef std::set<const Expression *> ExpressionsSet;
 	
 	class Expression {

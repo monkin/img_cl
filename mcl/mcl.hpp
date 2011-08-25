@@ -114,6 +114,7 @@ namespace mcl {
 		friend class Platform;
 		friend class Context;
 		friend class Program;
+		friend class Queue;
 		Device(cl_device_id d_id) : m_id(d_id) {};
 		std::string info_str(const cl_device_info param_name) const {
 			//cl_int clGetDeviceInfo (cl_device_id device,
@@ -346,6 +347,7 @@ namespace mcl {
 	protected:
 		friend class Buffer;
 		friend class Program;
+		friend class Queue;
 		Context(const cl_context ctx) : context(ctx) {
 			cl_int err_code = clRetainContext(context);
 			if(err_code)
@@ -526,9 +528,12 @@ namespace mcl {
 	};
 	
 	namespace PixelFormat {
-		extern const cl_image_format grayscale_8bit;// = { CL_LUMINANCE, CL_UNORM_INT8 };
-		extern const cl_image_format grayscale_16bit;// = { CL_LUMINANCE, CL_UNORM_INT16 };
-		extern const cl_image_format grayscale_float;// = { CL_LUMINANCE, CL_FLOAT };
+		extern const cl_image_format g_8bit;// = { CL_LUMINANCE, CL_UNORM_INT8 };
+		extern const cl_image_format g_16bit;// = { CL_LUMINANCE, CL_UNORM_INT16 };
+		extern const cl_image_format g_float;// = { CL_LUMINANCE, CL_FLOAT };
+		extern const cl_image_format ga_8bit;// = { CL_RA, CL_UNORM_INT8 };
+		extern const cl_image_format ga_16bit;// = { CL_RA, CL_UNORM_INT16 };
+		extern const cl_image_format ga_float;// = { CL_RA, CL_FLOAT };
 		extern const cl_image_format rgba_8bit;// = { CL_RGBA, CL_UNORM_INT8 };
 		extern const cl_image_format rgba_16bit;// = { CL_RGBA, CL_UNORM_INT16 };
 		extern const cl_image_format rgba_float;// = { CL_RGBA, CL_FLOAT };
@@ -912,11 +917,11 @@ namespace mcl {
 		cl_command_queue id() const  {
 			return queue;	
 		}
-		cl_context context() const {
-			return info_t<cl_context, CL_QUEUE_CONTEXT>();
+		Context context() const {
+			return Context(info_t<cl_context, CL_QUEUE_CONTEXT>());
 		}
-		cl_device_id device() const {
-			return info_t<cl_device_id, CL_QUEUE_DEVICE>();
+		Device device() const {
+			return Device(info_t<cl_device_id, CL_QUEUE_DEVICE>());
 		}
 		cl_int reference_count() const {
 			return info_t<cl_int, CL_QUEUE_REFERENCE_COUNT>();

@@ -44,15 +44,8 @@ private:
 	char*  m_source; 
 };
 
-class A {};
-class B : public A {};
-A operator+(const std::shared_ptr<A> &, const std::shared_ptr<A> &) {
-	return A();	
-}
 
 int main() {
-	std::shared_ptr<B> x(new B());
-	A y = x + x;
 	/*wxInitAllImageHandlers();
 	wxImage img(L"./img.jpg");
 	

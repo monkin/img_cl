@@ -121,12 +121,15 @@ namespace mcl {
 	}
 	
 	namespace PixelFormat {
-		const cl_image_format grayscale_8bit = { CL_LUMINANCE, CL_UNORM_INT8 };
-		const cl_image_format grayscale_16bit = { CL_LUMINANCE, CL_UNORM_INT16 };
-		const cl_image_format grayscale_float = { CL_LUMINANCE, CL_FLOAT };
+		const cl_image_format g_8bit = { CL_LUMINANCE, CL_UNORM_INT8 };
+		const cl_image_format g_16bit = { CL_LUMINANCE, CL_UNORM_INT16 };
+		const cl_image_format g_float = { CL_LUMINANCE, CL_FLOAT };
+		const cl_image_format ga_8bit = { CL_RA, CL_UNORM_INT8 };
+		const cl_image_format ga_16bit = { CL_RA, CL_UNORM_INT16 };
+		const cl_image_format ga_float = { CL_RA, CL_FLOAT };
 		const cl_image_format rgba_8bit = { CL_RGBA, CL_UNORM_INT8 };
 		const cl_image_format rgba_16bit = { CL_RGBA, CL_UNORM_INT16 };
-		const cl_image_format rgba_float = { CL_RGBA, CL_FLOAT };	
+		const cl_image_format rgba_float = { CL_RGBA, CL_FLOAT };
 	}
 }
 

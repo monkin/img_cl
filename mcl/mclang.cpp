@@ -80,7 +80,7 @@ namespace mclang {
 	void Expression::value_source(std::ostream &) const {};
 	void Expression::push_arguments(ArgumentsStream &) const {};
 	void Expression::set_arguments(ValuesStream &vs) const {};
-	void Expression::~Expression() {};
+	Expression::~Expression() {};
 	
 	Type SelectVector::type() const {
 		return expr->type().vector_of();	
