@@ -812,7 +812,7 @@ namespace mcl {
 					throw Error(err_code);
 			}
 			template<class T>
-			void build(const std::string &s, T &&cb) {
+			void build(const std::string &s, T cb) {
 				cl_int err_code = clBuildProgram(program, 0, NULL, s.c_str(), program_cb<T>, new T(cb));
 				if(err_code!=CL_SUCCESS)
 					throw Error(err_code);

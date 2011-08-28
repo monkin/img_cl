@@ -9,20 +9,31 @@
 #include <iostream>
 #include <exception>
 #include <map>
+#include <mutex>
 
 namespace layer {
 	
-	class ErrorFactoryNotFound : public std::exception {
+	class ErrorNotFound : public std::exception {
 	private:
-		std::string m_factory_name;
+		std::string m_name;
 		std::string message;
 	public:
-		ErrorFactoryNotFound(const std::string &fn) : m_factory_name(fn), message(std::string("Layer factory \"") + fn + "\" not found.") {};
-		const std::string &factory_name() const {
-			return m_factory_name;
+		ErrorNotFound(const std::string &fn) : m_name(fn), message(std::string("Layer factory \"") + fn + "\" not found.") {};
+		const std::string &name() const {
+			return m_name;
 		}
 		const char *what() const throw();
-		~ErrorFactoryNotFound() throw();
+		~ErrorNotFound() throw();
+	};
+	
+	class ErrorKernelBuild : public std::exception {
+	private:
+		const mcl::Program m_program;
+	public:
+		ErrorKernelBuild(const mcl::Program &p) : m_program(p) {}
+		const mcl::Program program() const { return m_program; }
+		const char *what() const throw();
+		~ErrorKernelBuild() throw();
 	};
 	
 	class Type {
@@ -58,7 +69,7 @@ namespace layer {
 		std::shared_ptr<Layer> create(const std::string &nm) {
 			auto fit = m_factory.find(nm);
 			if(fit==m_factory.end())
-				throw ErrorFactoryNotFound(nm);
+				throw ErrorNotFound(std::string("layer:") + nm);
 			else
 				return fit->second->create(*this);
 		}
@@ -85,15 +96,13 @@ namespace layer {
 			return m_value;	
 		}
 		void set_value(std::shared_ptr<Layer> v);
-		const Layer &owner() const {
-			return *m_owner;
+		const Layer *owner() const {
+			return m_owner;
 		}
-		Layer &owner() {
-			return *m_owner;
+		Layer *owner() {
+			return m_owner;
 		}
-		void set_owner(Layer *w) {
-			m_owner = w;	
-		}
+		void set_owner(Layer *);
 	};
 	
 	class Layer {
@@ -103,12 +112,13 @@ namespace layer {
 		Context m_context;
 		mclang::ExpressionRef m_position;
 		long long m_version;
+		Layer *m_parent;
 	protected:
 		mclang::ExpressionRef position() const {
 			return m_position;
 		}
 	public:
-		Layer(Context &c, const std::vector<Argument> &args) : m_arguments(args), m_context(c), m_version(1) {
+		Layer(Context &c, const std::vector<Argument> &args) : m_arguments(args), m_context(c), m_version(1), m_parent(0) {
 			for(auto i = m_arguments.begin(); i!=m_arguments.end(); i++) {
 				i->set_owner(this);
 				p_arguments.insert(std::pair<std::string, std::vector<Argument>::iterator>(i->name(), i));
@@ -123,11 +133,22 @@ namespace layer {
 		}
 		Argument &argument(const std::string &name) { return *p_arguments[name]; }
 		void set_position(const mclang::ExpressionRef &e) { m_position = e;	}
-		virtual void reset_cache() = 0;
+		
+		Layer *parent() { return m_parent; }
+		const Layer *parent() const { return m_parent; }
+		void set_parent(Layer *p) { m_parent = p; }
+		
+		virtual void build();
+		virtual void reset_cache();
+		
 		virtual mclang::ExpressionRef compute(size_t) = 0;
+		
+		// version
 		long long version() const { return m_version; }
 		void inc_version() { m_version++; }
 		void set_version(long long v) { m_version = v; }
+		
+		virtual ~Layer();
 	};
 	
 	template<typename T>
@@ -151,10 +172,24 @@ namespace layer {
 	std::shared_ptr<Layer> LayerFactoryRegistrar<T>::FactoryInstance::create(Context &c) {
 		return std::shared_ptr<Layer>(new T(c));
 	}
+
+	class HostLayer : public Layer {
 	
-	
-	class HostLayer : public Layer {};
-	class DeviceLayer : public Layer {};
+	};
+	class DeviceLayer : public Layer {
+		private:
+			std::map<std::string, std::pair<std::shared_ptr<mcl::Program>, std::shared_ptr<mcl::Kernel>> kernels;
+			volatile bool m_build_started;
+			volatile bool m_build_finished;
+			std::mutext m_build_mutex;
+			std::condition_variable m_finish_cond;
+		protected:
+			mcl::Kernel kernel(const std::string &);
+		public:
+			virtual std::map<std::string, mclang::ExpressionRef> expressions() = 0;
+			void build();
+			virtual void reset_cache();
+	};
 }
 
 
