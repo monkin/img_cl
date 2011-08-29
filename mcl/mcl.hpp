@@ -671,7 +671,7 @@ namespace mcl {
 	template<class T>
 	void program_cb(cl_program p, void *data) {
 		try {
-			reinterpret_cast<T *>(data)();
+			(*reinterpret_cast<T *>(data))();
 			delete reinterpret_cast<T *>(data);
 		} catch(...) {
 			delete reinterpret_cast<T *>(data);
@@ -808,6 +808,12 @@ namespace mcl {
 			}
 			void build(const std::string &s = "") {
 				cl_int err_code = clBuildProgram(program, 0, NULL, s.c_str(), NULL, NULL);
+				if(err_code!=CL_SUCCESS)
+					throw Error(err_code);
+			}
+			template<class T>
+			void build(T cb) {
+				cl_int err_code = clBuildProgram(program, 0, NULL, "", program_cb<T>, new T(cb));
 				if(err_code!=CL_SUCCESS)
 					throw Error(err_code);
 			}

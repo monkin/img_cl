@@ -3,3 +3,4 @@ Makefile
 CMakeFiles
 cmake_install.cmake
 img_cl.exe
+img_cl

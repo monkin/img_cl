@@ -9,31 +9,33 @@
 #include <iostream>
 #include <exception>
 #include <map>
-#include <mutex>
+#include <boost/thread.hpp>
 
 namespace layer {
 	
-	class ErrorNotFound : public std::exception {
+	class NotFoundException : public std::exception {
 	private:
 		std::string m_name;
 		std::string message;
 	public:
-		ErrorNotFound(const std::string &fn) : m_name(fn), message(std::string("Layer factory \"") + fn + "\" not found.") {};
+		NotFoundException(const std::string &fn) : m_name(fn), message(std::string("Layer factory \"") + fn + "\" not found.") {};
 		const std::string &name() const {
 			return m_name;
 		}
 		const char *what() const throw();
-		~ErrorNotFound() throw();
+		~NotFoundException() throw();
 	};
 	
-	class ErrorKernelBuild : public std::exception {
+	class BuildException : public std::exception {
 	private:
 		const mcl::Program m_program;
+		const std::string m_expression_name;
 	public:
-		ErrorKernelBuild(const mcl::Program &p) : m_program(p) {}
+		BuildException(const std::string &exp_name, const mcl::Program &p) : m_program(p), m_expression_name(exp_name) {}
 		const mcl::Program program() const { return m_program; }
+		const std::string expression_name() const { return m_expression_name; }
 		const char *what() const throw();
-		~ErrorKernelBuild() throw();
+		~BuildException() throw();
 	};
 	
 	class Type {
@@ -69,7 +71,7 @@ namespace layer {
 		std::shared_ptr<Layer> create(const std::string &nm) {
 			auto fit = m_factory.find(nm);
 			if(fit==m_factory.end())
-				throw ErrorNotFound(std::string("layer:") + nm);
+				throw NotFoundException(std::string("layer:") + nm);
 			else
 				return fit->second->create(*this);
 		}
@@ -124,6 +126,10 @@ namespace layer {
 				p_arguments.insert(std::pair<std::string, std::vector<Argument>::iterator>(i->name(), i));
 			}
 		}
+		
+		virtual void build();
+		virtual void reset_cache();
+		
 		Context &context() { return m_context; }
 		virtual std::string class_name() const;
 		const std::vector<Argument> &arguments() const { return m_arguments; }
@@ -132,14 +138,11 @@ namespace layer {
 			return *(p_arguments.find(name)->second);
 		}
 		Argument &argument(const std::string &name) { return *p_arguments[name]; }
-		void set_position(const mclang::ExpressionRef &e) { m_position = e;	}
+		void set_position(const mclang::ExpressionRef &e) { reset_cache(); m_position = e;	}
 		
 		Layer *parent() { return m_parent; }
 		const Layer *parent() const { return m_parent; }
 		void set_parent(Layer *p) { m_parent = p; }
-		
-		virtual void build();
-		virtual void reset_cache();
 		
 		virtual mclang::ExpressionRef compute(size_t) = 0;
 		
@@ -176,19 +179,36 @@ namespace layer {
 	class HostLayer : public Layer {
 	
 	};
+	
 	class DeviceLayer : public Layer {
-		private:
-			std::map<std::string, std::pair<std::shared_ptr<mcl::Program>, std::shared_ptr<mcl::Kernel>> kernels;
-			volatile bool m_build_started;
-			volatile bool m_build_finished;
-			std::mutext m_build_mutex;
-			std::condition_variable m_finish_cond;
-		protected:
-			mcl::Kernel kernel(const std::string &);
-		public:
-			virtual std::map<std::string, mclang::ExpressionRef> expressions() = 0;
-			void build();
-			virtual void reset_cache();
+	private:
+		std::map<std::string, std::pair<mcl::Program, std::shared_ptr<mcl::Kernel>>> kernels;
+		volatile bool m_build_started;
+		volatile bool m_build_finished;
+		boost::mutex m_build_mutex;
+		boost::condition_variable m_finish_cond;
+		void wait_for_build() {
+			boost::unique_lock<boost::mutex> lk(m_build_mutex);
+			if(m_build_started && !m_build_finished)
+				m_finish_cond.wait(lk, [&m_build_finished]{ return m_build_finished; });
+		}
+		void program_ready(const std::string &name, mcl::Program &program, mclang::ExpressionRef expr, size_t sz) {
+			boost::lock_guard<boost::mutex> lk(m_build_mutex);
+			if(program.build_status(context().device())!=CL_BUILD_SUCCESS)
+				kernels.insert(std::make_pair(name, std::make_pair(program, std::shared_ptr<mcl::Kernel>(new mcl::Kernel(program.kernel("main_kernel"))))));
+			else
+				kernels.insert(std::make_pair(name, std::make_pair(program, std::shared_ptr<mcl::Kernel>())));
+			if(kernels.size()==sz) {
+				m_build_finished = true;
+				m_finish_cond.notify_all();
+			}
+		}
+	protected:
+		mcl::Kernel kernel(const std::string &);
+	public:
+		virtual std::map<std::string, mclang::ExpressionRef> expressions() = 0;
+		void build();
+		virtual void reset_cache();
 	};
 }
 

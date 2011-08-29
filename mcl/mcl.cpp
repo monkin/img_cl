@@ -30,6 +30,7 @@ static const std::vector<err_message_t> err_messages = {
 	{ CL_COMPILER_NOT_AVAILABLE, "CL_COMPILER_NOT_AVAILABLE: program is created with clCreateProgramWithSource and a compiler is not available i.e. CL_DEVICE_COMPILER_AVAILABLE specified in the table of OpenCL Device Queries for clGetDeviceInfo is set to CL_FALSE." },
 	{ CL_BUILD_PROGRAM_FAILURE, "CL_BUILD_PROGRAM_FAILURE: there is a failure to build the program executable. This error will be returned if clBuildProgram does not return until the build has completed." },
 	{ CL_INVALID_KERNEL_ARGS, "CL_INVALID_KERNEL_ARGS: the kernel argument values have not been specified."},
+	{ CL_INVALID_KERNEL_NAME, "CL_INVALID_KERNEL_NAME: kernel_name is not found in program." },
 	{ CL_SUCCESS, "CL_SUCCESS: all right." }
 };
 
